@@ -1,0 +1,122 @@
+## 优化策略讲解
+
+### 一、 **事件代理（Event Delegation）**
+
+> ✅ 只在容器上绑定一次事件，而不是给每个元素单独绑定。
+
+- 减少内存开销（少量事件监听器）
+- 支持动态添加元素
+- 对 `v-for` 列表非常友好
+
+示例：
+
+```js
+const onMouseDown = (e) => {
+  const target = e.target.closest('.draggable-item')
+  if (!target) return
+  // ...逻辑
+}
+```
+
+------
+
+### 二、 **避免频繁操作 DOM**
+
+所有位置信息都放进 `ref(boxes)` 里，Vue 自动更新样式。
+ 不要在循环中调用 `style.left/top = ...`。
+
+------
+
+### 三、**统一全局事件绑定**
+
+`mousemove` / `mouseup` 都绑定在 `document` 上，保证用户拖出容器仍能捕获。
+
+------
+
+### 四、 **流畅度优化**
+
+- 如果性能瓶颈明显，可用 `requestAnimationFrame` 节流：
+
+  ```js
+  let ticking = false
+  const onMouseMove = (e) => {
+    if (!ticking) {
+      ticking = true
+      requestAnimationFrame(() => {
+        boxes.value[activeIndex].x = e.clientX - offset.x
+        boxes.value[activeIndex].y = e.clientY - offset.y
+        ticking = false
+      })
+    }
+  }
+  ```
+
+- 常配合 GPU 加速：
+
+  ```css
+  transform: translate3d(x, y, 0);
+  ```
+
+------
+
+### 五、 **组件封装思维**
+
+可将上面提取为通用组件：
+
+```vue
+<DraggableContainer>
+  <DraggableBox v-for="..." />
+</DraggableContainer>
+```
+
+类似实现可参考阿里/字节的内部 UI 组件库。
+
+### 六、+、closest等高性能工具
+
+---
+
+[closest](####closest)
+
+[+](+)
+
+## 附录
+
+#### 讲讲closest
+
+使用示例：`const target = event.target.closest('.draggale-item')`
+
+`closest(selector)`：
+
+- 从当前元素(`e.target`) 开始，逐级向上查找（包括自身）,找到第一个匹配指定选择器的祖先元素；
+- 找到就返回该元素；
+- 如果一直到`document` 都没有找到，则返回null
+
+| 技术点             | 优势                                                         |
+| ------------------ | ------------------------------------------------------------ |
+| ✅ **事件代理**     | 只在父级（甚至 document）监听一次事件，不用为每个子元素绑定。 |
+| ✅ **容错性强**     | 即使点在 `.draggable-item` 的内部子节点上，也能正确拿到外层目标。 |
+| ✅ **性能好**       | 减少大量事件监听器绑定，尤其在拖拽或动态生成元素时性能提升显著。 |
+| ✅ **代码更语义化** | 直观表达 “找到离我最近的符合条件的祖先节点”。                |
+
+###### 等价的传统写法：
+
+```js
+let node = e.target
+while (node && !node.classList.contains('draggable-item')) {
+  node = node.parentNode
+}
+const target = node
+
+```
+
+#### 讲讲+
+
+在框架源码中，常常看到+在字符串转数字类型场景的声影，原因：
+```js
+// 性能快：+ 比 Number() 调用更轻量；
+// 语义简洁：短小、干净；
+// 常见于 dataset / input.value 等 DOM 属性，因为这些值默认是字符串。
+```
+
+但是，`+` 转换时若内容不是纯数字字符串，会变成 `NaN`：
+
