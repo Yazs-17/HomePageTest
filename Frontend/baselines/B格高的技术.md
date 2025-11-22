@@ -5,6 +5,12 @@ iframe拼接；single-spa/qiankun（JS运行时把子应用 挂载到主框架�
 为什么要有呢：
 项目历史技术栈过杂，项目过于庞大等等。
 
+### Firecracker
+基于 KVM 的轻量级虚拟机监控器（VMM）,专门给 Serverless（Lambda）服务设计
+与Docker相比，极高安全性，启动快，内存占用低
+不同用户的代码完全隔离
+
+
 
 ### 对框架进行SEO思路
 
